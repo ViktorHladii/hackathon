@@ -329,7 +329,7 @@ export class WalletProvider {
     }
 
     async getBridgePoolBalances() {
-        let result: Record<string, Record<Address, string>> = {}
+        let result: Record<string, Record<string, string>> = {}
         console.log(this.chains)
         for (let chainName in this.chains) {
             console.log(chainName)
@@ -346,7 +346,7 @@ export class WalletProvider {
                     args: [this.liquidityPools[chainName]]
                 });
 
-                result[chainName][tokenAddr] = balance.toString();
+                result[chainName][token] = balance.toString();
             }
         }
         return result;
@@ -422,7 +422,8 @@ export const evmWalletProvider: Provider = {
             const balances = await walletProvider.getBridgePoolBalances();
 
             let t = `${agentName}'s EVM Wallet Address: ${address}\nBalance: ${balance} ${chain.nativeCurrency.symbol}\nChain ID: ${chain.id}, Name: ${chain.name}`;
-            t += `\nLiquidity Pool's token balances:` + JSON.stringify(balances);
+            t += `\nLiquidity Pool's token balances:\n
+        USE IT FOR GET BALANCE OF LIQUIDITY POOL!!!!` + JSON.stringify(balances);
             console.log("provider info:", t);
             return t;
         } catch (error) {

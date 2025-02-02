@@ -41,7 +41,6 @@ export class DepositAction {
 
 
 
-
         const approveTxData = encodeFunctionData({
             abi: erc20Abi,
             functionName: "approve",
@@ -50,8 +49,6 @@ export class DepositAction {
                 params.amount,
             ],
         });
-
-
 
         const depositTxData = encodeFunctionData({
             abi: erc20BArtifacts.abi,
@@ -117,60 +114,6 @@ export class DepositAction {
                 throw new Error(`Vote failed: ${error.message}`);
             }
         }
-
-        // try {
-        //     console.log(
-        //         `Depositing: ${params.amount} tokens to (${params.bridge} on ${params.chainId})`
-        //     );
-
-
-
-        //     this.walletProvider.switchChain(params.chain);
-
-        //     const chainConfig = this.walletProvider.getChainConfigs(
-        //         params.chain
-        //     );
-
-        //     // Log current block before sending transaction
-        //     const publicClient = this.walletProvider.getPublicClient(
-        //         params.chain
-        //     );
-
-        //     const hash = await walletClient.sendTransaction({
-        //         account: walletClient.account,
-        //         to: params.bridge,
-        //         value: BigInt(0),
-        //         data: approveTxData as Hex,
-        //         chain: chainConfig,
-        //         kzg: {
-        //             blobToKzgCommitment: (_blob: ByteArray): ByteArray => {
-        //                 throw new Error("Function not implemented.");
-        //             },
-        //             computeBlobKzgProof: (
-        //                 _blob: ByteArray,
-        //                 _commitment: ByteArray
-        //             ): ByteArray => {
-        //                 throw new Error("Function not implemented.");
-        //             },
-        //         },
-        //     });
-
-        //     const receipt = await publicClient.waitForTransactionReceipt({
-        //         hash,
-        //     });
-
-        //     return {
-        //         hash,
-        //         from: walletClient.account.address,
-        //         to: params.bridge,
-        //         value: BigInt(0),
-        //         data: data as Hex,
-        //         chainId: this.walletProvider.getChainConfigs(params.chain).id,
-        //         logs: receipt.logs,
-        //     };
-        // } catch (error) {
-        //     throw new Error(`Vote failed: ${error.message}`);
-        // }
 
         return arrTx[1];
     }
@@ -241,16 +184,30 @@ export const depositAction = {
     },
     examples: [
         [
+            // {
+            //     user: "user",
+            //     content: {
+            //         text: "Deposit 30 usdt from bg1 to bg2",
+            //         action: "DEPOSIT",
+            //     },
+            // },
+            {
+                user: "assistant",
+                content: {
+                    text: "I'll help you to balance liquidity pools from bg1 (usdt: 1300) to bg2 (usdt: 700) by depositing 300 usdt from bg2 to bg1",
+                    action: "DEPOSIT",
+                },
+            },
             {
                 user: "user",
                 content: {
-                    text: "Deposit 1 usdt from bg1 to bg2",
+                    text: "Rebalance liquidity pools: bg1 (usdc: 150), bg2 (usdc: 100), bg3 (usdc: 50) by depositing 50 usdc from bg3 to bg1",
                     action: "DEPOSIT",
                 },
             },
         ],
     ],
-    similes: ["DEPOSIT"],
+    similes: ["DEPOSIT", "REBALANCE", "REBALANCE_POOLS", "REBALANCE_LIQUIDITY"],
 }; // TODO: add more examples
 
 const buildTransferDetails = async (
@@ -262,6 +219,8 @@ const buildTransferDetails = async (
         state,
         template: depositTemplate,
     });
+
+    console.log(context);
 
     const depositDetails = (await generateObjectDeprecated({
         runtime,

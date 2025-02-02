@@ -216,12 +216,19 @@ Respond with a JSON markdown block containing only the extracted values. Use nul
 \`\`\`
 `;
 
-export const depositTemplate = `Given the recent messages and wallet information below:
+export const depositTemplate = `
+Given the recent messages, wallet information, and liquidity pool info below decide from which chain to which chain and how much of which token to deposit in order to balance liquidity pools:
 
+Recent messages:
 {{recentMessages}}
 
+Liquidity pool info for each network:
 {{providers}}
 
+u should send half of difference of Liquidity pool balance to each chain.
+f.e. (LPBalances[Network1][token]-LPBalances[Network2][token])/2
+where network1 is the richest one and network2 is the lowest one
+use liquidity pool balance .
 
 Token addresses on each networks:
     bg1:
@@ -252,7 +259,7 @@ Extract the following information about the requested proposal:
 - Token address
 - Chain id of receiver chain 
 - Amount of tokens only in WEI
-- Chain name of sender chain, cud be bg1, bg2, bg3
+- Chain name of sender chain, could be: bg1, bg2, bg3
 - Bridge address
 
 
