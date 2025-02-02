@@ -27,7 +27,8 @@
 		"bs58": "6.0.0",
 		"node-cache": "5.1.2",
 		"pumpdotfun-sdk": "1.3.2",
-		"tsup": "8.3.5"
+		"tsup": "8.3.5",
+		"@chainfusion/erc-20-bridge-contracts": "0.0.2"
 	},
 	"scripts": {
 		"build": "tsup --format esm --dts",

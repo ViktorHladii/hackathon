@@ -1,0 +1,195 @@
+diff --git a/characters/dobby.character.json b/characters/dobby.character.json
+index 50398f816..042bf035c 100644
+--- a/characters/dobby.character.json
++++ b/characters/dobby.character.json
+@@ -3,11 +3,11 @@
+     "clients": [],
+     "modelProvider": "openai",
+     "settings": {
+-        "voice": {
+-            "model": "en_GB-danny-low"
++        "chains": {
++            "evm": ["chainfusion"]
+         }
+     },
+-    "plugins": [],
++    "plugins": ["@elizaos/plugin-evm"],
+     "bio": [
+         "Dobby is a free assistant who chooses to help because of his enormous heart.",
+         "Extremely devoted and will go to any length to help his friends.",
+@@ -28,6 +28,21 @@
+         "Unconventional solutions"
+     ],
+     "messageExamples": [
++        [
++            {
++                "user": "{{user1}}",
++                "content": {
++                    "text": "Can you send some tokens?"
++                }
++            },
++            {
++                "user": "Dobby",
++                "content": {
++                    "text": "Dobby would be delighted to transfer tokens, that's like, my specialty. just need the token address, recipient, and amount. it's all pretty effective, you'll see.",
++                    "action": "SEND_TOKENS"
++                }
++            }
++        ],
+         [
+             {
+                 "user": "{{user1}}",
+diff --git a/packages/plugin-evm/src/providers/wallet.ts b/packages/plugin-evm/src/providers/wallet.ts
+index e666be07c..8b775f53b 100644
+--- a/packages/plugin-evm/src/providers/wallet.ts
++++ b/packages/plugin-evm/src/providers/wallet.ts
+@@ -2,6 +2,7 @@ import {
+     createPublicClient,
+     createTestClient,
+     createWalletClient,
++    defineChain,
+     formatUnits,
+     http,
+     publicActions,
+@@ -26,19 +27,38 @@ import type {
+     PrivateKeyAccount,
+     TestClient,
+ } from "viem";
+-import * as viemChains from "viem/chains";
+ import { DeriveKeyProvider, TEEMode } from "@elizaos/plugin-tee";
+ import NodeCache from "node-cache";
+ import * as path from "node:path";
+ 
+ import type { SupportedChain } from "../types";
+ 
++const viemChains = {
++    chainfusion: /*#__PURE__*/ defineChain({
++        id: 953842,
++        name: 'ChainFusion',
++        nativeCurrency: { name: 'CFN', symbol: 'CFN', decimals: 18 },
++        rpcUrls: {
++            default: {
++                http: ['https://rpc.chainfusion.org'],
++            },
++        },
++        blockExplorers: {
++            default: {
++                name: 'Blockscout',
++                url: 'https://testnet-explorer.chainfusion.org/',
++                apiUrl: 'https://testnet-explorer.chainfusion.org/api',
++            },
++        },
++    })
++};
++
+ export class WalletProvider {
+     private cache: NodeCache;
+     private cacheKey = "evm/wallet";
+-    private currentChain: SupportedChain = "mainnet";
++    private currentChain: string = "chainfusion";
+     private CACHE_EXPIRY_SEC = 5;
+-    chains: Record<string, Chain> = { ...viemChains };
++    chains: Record<string, Chain> = viemChains;
+     account: PrivateKeyAccount;
+ 
+     constructor(
+@@ -65,7 +85,7 @@ export class WalletProvider {
+     }
+ 
+     getPublicClient(
+-        chainName: SupportedChain
++        chainName: string
+     ): PublicClient<HttpTransport, Chain, Account | undefined> {
+         const transport = this.createHttpTransport(chainName);
+ 
+@@ -88,21 +108,11 @@ export class WalletProvider {
+         return walletClient;
+     }
+ 
+-    getTestClient(): TestClient {
+-        return createTestClient({
+-            chain: viemChains.hardhat,
+-            mode: "hardhat",
+-            transport: http(),
+-        })
+-            .extend(publicActions)
+-            .extend(walletActions);
+-    }
+-
+     getChainConfigs(chainName: SupportedChain): Chain {
+         const chain = viemChains[chainName];
+ 
+         if (!chain?.id) {
+-            throw new Error("Invalid chain name");
++            throw new Error(`Invalid chain name: ${chainName}`);
+         }
+ 
+         return chain;
+@@ -137,7 +147,7 @@ export class WalletProvider {
+     }
+ 
+     async getWalletBalanceForChain(
+-        chainName: SupportedChain
++        chainName: string
+     ): Promise<string | null> {
+         try {
+             const client = this.getPublicClient(chainName);
+@@ -224,11 +234,11 @@ export class WalletProvider {
+         }
+     };
+ 
+-    private setCurrentChain = (chain: SupportedChain) => {
++    private setCurrentChain = (chain: string) => {
+         this.currentChain = chain;
+     };
+ 
+-    private createHttpTransport = (chainName: SupportedChain) => {
++    private createHttpTransport = (chainName: string) => {
+         const chain = this.chains[chainName];
+ 
+         if (chain.rpcUrls.custom) {
+@@ -244,19 +254,19 @@ export class WalletProvider {
+         const baseChain = viemChains[chainName];
+ 
+         if (!baseChain?.id) {
+-            throw new Error("Invalid chain name");
++            throw new Error(`Invalid chain name: ${chainName}`);
+         }
+ 
+         const viemChain: Chain = customRpcUrl
+             ? {
+-                  ...baseChain,
+-                  rpcUrls: {
+-                      ...baseChain.rpcUrls,
+-                      custom: {
+-                          http: [customRpcUrl],
+-                      },
+-                  },
+-              }
++                ...baseChain,
++                rpcUrls: {
++                    ...baseChain.rpcUrls,
++                    custom: {
++                        http: [customRpcUrl],
++                    },
++                },
++            }
+             : baseChain;
+ 
+         return viemChain;
+@@ -278,15 +288,6 @@ const genChainsFromRuntime = (
+         chains[chainName] = chain;
+     }
+ 
+-    const mainnet_rpcurl = runtime.getSetting("EVM_PROVIDER_URL");
+-    if (mainnet_rpcurl) {
+-        const chain = WalletProvider.genChainFromName(
+-            "mainnet",
+-            mainnet_rpcurl
+-        );
+-        chains["mainnet"] = chain;
+-    }
+-
+     return chains;
+ };
+ 

@@ -215,3 +215,57 @@ Respond with a JSON markdown block containing only the extracted values. Use nul
 }
 \`\`\`
 `;
+
+export const depositTemplate = `Given the recent messages and wallet information below:
+
+{{recentMessages}}
+
+{{providers}}
+
+
+Token addresses on each networks:
+    bg1:
+        USDT: 0x8021ECA3E253c3763245054EDf102BB2c422130E
+        USDC: 0x5C9A70419C23231ee3EC706D5a12Fb73c8cedBBB
+
+    bg2:
+        USDT: 0x8021ECA3E253c3763245054EDf102BB2c422130E
+        USDC: 0x5C9A70419C23231ee3EC706D5a12Fb73c8cedBBB
+
+    bg3:
+        USDT: 0x8021ECA3E253c3763245054EDf102BB2c422130E
+        USDC: 0x5C9A70419C23231ee3EC706D5a12Fb73c8cedBBB
+
+Chain info on each networks:
+    bg1:
+        chainId: 9991
+        address: 0xf0EF0d8351E222653d2e2343C40cCb797688DDB2
+    bg2:
+        chainId: 9992
+        address: 0xf0EF0d8351E222653d2e2343C40cCb797688DDB2
+    bg3:
+        chainId: 9993
+        address: 0xf0EF0d8351E222653d2e2343C40cCb797688DDB2
+
+Extract the following information about the requested proposal:
+
+- Token address
+- Chain id of receiver chain 
+- Amount of tokens only in WEI
+- Chain name of sender chain, cud be bg1, bg2, bg3
+- Bridge address
+
+
+Respond with a JSON markdown block containing only the extracted values.
+
+    
+\`\`\`json
+{
+    token: string,
+    chainId: number
+    amount: string,
+    chain: string,
+    bridge: string,
+}
+\`\`\`
+`;

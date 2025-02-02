@@ -1,3 +1,5 @@
+import { ethers } from "ethers";
+import dotenv from "dotenv";
 import {
     type Action,
     type IAgentRuntime,
@@ -10,63 +12,46 @@ import {
     elizaLogger,
 } from "@elizaos/core";
 
-import { CreateResourceSchema, isCreateResourceContent } from "../types";
+dotenv.config();
 
-import { createResourceTemplate } from "../templates";
+export interface Manager extends ethers.Contract{
+    add(tokenA: string, tokenB: string, amountADesired: number, amountBDesired: number, amountAMin: number, amountBMin: number, to: string, deadline: number): Promise<void>;
+}
 
-export const createResourceAction: Action = {
-    name: "CREATE_RESOURCE",
-    description: "Create a new resource with the specified details",
+class LiquidityManager {
+    private provider: ethers.providers.JsonRpcProvider;
+    private wallet: ethers.Wallet;
+    private contract: ethers.Contract;
+  
+    constructor(rpcUrl: string, privateKey: string, contractAddress: string, abi: any) {
+      this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      this.wallet = new ethers.Wallet(privateKey, this.provider);
+      this.contract = new ethers.Contract(contractAddress, abi, this.wallet);
+    }
+
+    async addLiquidity(amount: ethers.BigNumber): Promise<ethers.providers.TransactionResponse> {
+        const tx = await (this.contract as Manager).add(amount, { value: amount });
+        await tx.wait();
+        return tx;
+      }
+
+}
+
+export const manageLiquidityAction: Action = {
+    name: "MANAGE_LIQUIDITY",
+    description: "manage liquidity pull",
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         return !!runtime.character.settings.secrets?.API_KEY;
     },
     handler: async (
         runtime: IAgentRuntime,
         _message: Memory,
-        
         state: State,
         _options: object,
         callback: HandlerCallback
     ) => {
         try {
-            const context = composeContext({
-                state,
-                template: createResourceTemplate,
-            });
-
-            const resourceDetails = await generateObject({
-                runtime,
-                context,
-                modelClass: ModelClass.SMALL,
-                schema: CreateResourceSchema,
-            });
-
-            if (!isCreateResourceContent(resourceDetails.object)) {
-                callback({ text: "Invalid resource details provided." }, []);
-                return;
-            }
-
-            // persist relevant data if needed to memory/knowledge
-            // const memory = {
-            //     type: "resource",
-            //     content: resourceDetails.object,
-            //     timestamp: new Date().toISOString()
-            // };
-
-            // await runtime.storeMemory(memory);
-
-            callback(
-                {
-                    text: `Resource created successfully:
-- Name: ${resourceDetails.object.name}
-- Type: ${resourceDetails.object.type}
-- Description: ${resourceDetails.object.description}
-- Tags: ${resourceDetails.object.tags.join(", ")}
-
-Resource has been stored in memory.`,
-                },
-                []
-            );
+            
         } catch (error) {
             elizaLogger.error("Error creating resource:", error);
             callback(

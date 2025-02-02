@@ -2,6 +2,8 @@ import {
     createPublicClient,
     createTestClient,
     createWalletClient,
+    defineChain,
+    erc20Abi,
     formatUnits,
     http,
     publicActions,
@@ -26,20 +28,94 @@ import type {
     PrivateKeyAccount,
     TestClient,
 } from "viem";
-import * as viemChains from "viem/chains";
 import { DeriveKeyProvider, TEEMode } from "@elizaos/plugin-tee";
 import NodeCache from "node-cache";
 import * as path from "node:path";
 
 import type { SupportedChain } from "../types";
 
+const viemChains = {
+    bg1: defineChain({
+        id: 9991,
+        name: 'ChainFusion',
+        nativeCurrency: { name: 'CFN', symbol: 'CFN', decimals: 18 },
+        rpcUrls: {
+            default: {
+                http: ['https://rpc-bg1.chainfusion.org'],
+            },
+        },
+        blockExplorers: {
+            default: {
+                name: 'Blockscout',
+                url: 'https://explorer-bg1.chainfusion.org/',
+                apiUrl: 'https://explorer-bg1.chainfusion.org/api',
+            },
+        },
+    }),
+    bg2: defineChain({
+        id: 9992,
+        name: 'ChainFusion',
+        nativeCurrency: { name: 'CFN', symbol: 'CFN', decimals: 18 },
+        rpcUrls: {
+            default: {
+                http: ['https://rpc-bg2.chainfusion.org'],
+            },
+        },
+        blockExplorers: {
+            default: {
+                name: 'Blockscout',
+                url: 'https://explorer-bg2.chainfusion.org/',
+                apiUrl: 'https://explorer-bg2.chainfusion.org/api',
+            },
+        },
+    }),
+    bg3: defineChain({
+        id: 9993,
+        name: 'ChainFusion',
+        nativeCurrency: { name: 'CFN', symbol: 'CFN', decimals: 18 },
+        rpcUrls: {
+            default: {
+                http: ['https://rpc-bg3.chainfusion.org'],
+            },
+        },
+        blockExplorers: {
+            default: {
+                name: 'Blockscout',
+                url: 'https://explorer-bg3.chainfusion.org/',
+                apiUrl: 'https://explorer-bg3.chainfusion.org/api',
+            },
+        },
+    }),
+};
+
 export class WalletProvider {
     private cache: NodeCache;
     private cacheKey = "evm/wallet";
-    private currentChain: SupportedChain = "mainnet";
+    private currentChain: string = "chainfusion";
     private CACHE_EXPIRY_SEC = 5;
-    chains: Record<string, Chain> = { ...viemChains };
+    chains: Record<string, Chain> = viemChains;
     account: PrivateKeyAccount;
+
+    tokenAddress: Record<string, Record<string, Address>> = {
+        "bg1": {
+            "USDT": "0x8021ECA3E253c3763245054EDf102BB2c422130E",
+            "USDC": "0x5C9A70419C23231ee3EC706D5a12Fb73c8cedBBB",
+        },
+        "bg2": {
+            "USDT": "0x8021ECA3E253c3763245054EDf102BB2c422130E",
+            "USDC": "0x5C9A70419C23231ee3EC706D5a12Fb73c8cedBBB",
+        },
+        "bg3": {
+            "USDT": "0x8021ECA3E253c3763245054EDf102BB2c422130E",
+            "USDC": "0x5C9A70419C23231ee3EC706D5a12Fb73c8cedBBB",
+        },
+    };
+
+    liquidityPools: Record<string, Address> = {
+        "bg1": "0x85EBE7a44555921154a62AD35d5fB2490d58C956",
+        "bg2": "0x85EBE7a44555921154a62AD35d5fB2490d58C956",
+        "bg3": "0x85EBE7a44555921154a62AD35d5fB2490d58C956",
+    };
 
     constructor(
         accountOrPrivateKey: PrivateKeyAccount | `0x${string}`,
@@ -65,7 +141,7 @@ export class WalletProvider {
     }
 
     getPublicClient(
-        chainName: SupportedChain
+        chainName: string
     ): PublicClient<HttpTransport, Chain, Account | undefined> {
         const transport = this.createHttpTransport(chainName);
 
@@ -88,21 +164,11 @@ export class WalletProvider {
         return walletClient;
     }
 
-    getTestClient(): TestClient {
-        return createTestClient({
-            chain: viemChains.hardhat,
-            mode: "hardhat",
-            transport: http(),
-        })
-            .extend(publicActions)
-            .extend(walletActions);
-    }
-
     getChainConfigs(chainName: SupportedChain): Chain {
         const chain = viemChains[chainName];
 
         if (!chain?.id) {
-            throw new Error("Invalid chain name");
+            throw new Error(`Invalid chain name: ${chainName}`);
         }
 
         return chain;
@@ -137,7 +203,7 @@ export class WalletProvider {
     }
 
     async getWalletBalanceForChain(
-        chainName: SupportedChain
+        chainName: string
     ): Promise<string | null> {
         try {
             const client = this.getPublicClient(chainName);
@@ -224,11 +290,11 @@ export class WalletProvider {
         }
     };
 
-    private setCurrentChain = (chain: SupportedChain) => {
+    private setCurrentChain = (chain: string) => {
         this.currentChain = chain;
     };
 
-    private createHttpTransport = (chainName: SupportedChain) => {
+    private createHttpTransport = (chainName: string) => {
         const chain = this.chains[chainName];
 
         if (chain.rpcUrls.custom) {
@@ -244,22 +310,46 @@ export class WalletProvider {
         const baseChain = viemChains[chainName];
 
         if (!baseChain?.id) {
-            throw new Error("Invalid chain name");
+            throw new Error(`Invalid chain name: ${chainName}`);
         }
 
         const viemChain: Chain = customRpcUrl
             ? {
-                  ...baseChain,
-                  rpcUrls: {
-                      ...baseChain.rpcUrls,
-                      custom: {
-                          http: [customRpcUrl],
-                      },
-                  },
-              }
+                ...baseChain,
+                rpcUrls: {
+                    ...baseChain.rpcUrls,
+                    custom: {
+                        http: [customRpcUrl],
+                    },
+                },
+            }
             : baseChain;
 
         return viemChain;
+    }
+
+    async getBridgePoolBalances() {
+        let result: Record<string, Record<Address, string>> = {}
+        console.log(this.chains)
+        for (let chainName in this.chains) {
+            console.log(chainName)
+            result[chainName] = {}
+            for (let token in this.tokenAddress[chainName]) {
+                console.log(token)
+
+                let client = this.getPublicClient(chainName);
+                let tokenAddr = this.tokenAddress[chainName][token];
+                let balance = await client.readContract({
+                    address: this.tokenAddress[chainName][token],
+                    abi: erc20Abi,
+                    functionName: "balanceOf",
+                    args: [this.liquidityPools[chainName]]
+                });
+
+                result[chainName][tokenAddr] = balance.toString();
+            }
+        }
+        return result;
     }
 }
 
@@ -276,15 +366,6 @@ const genChainsFromRuntime = (
         );
         const chain = WalletProvider.genChainFromName(chainName, rpcUrl);
         chains[chainName] = chain;
-    }
-
-    const mainnet_rpcurl = runtime.getSetting("EVM_PROVIDER_URL");
-    if (mainnet_rpcurl) {
-        const chain = WalletProvider.genChainFromName(
-            "mainnet",
-            mainnet_rpcurl
-        );
-        chains["mainnet"] = chain;
     }
 
     return chains;
@@ -325,6 +406,7 @@ export const initWalletProvider = async (runtime: IAgentRuntime) => {
     }
 };
 
+
 export const evmWalletProvider: Provider = {
     async get(
         runtime: IAgentRuntime,
@@ -337,7 +419,12 @@ export const evmWalletProvider: Provider = {
             const balance = await walletProvider.getWalletBalance();
             const chain = walletProvider.getCurrentChain();
             const agentName = state?.agentName || "The agent";
-            return `${agentName}'s EVM Wallet Address: ${address}\nBalance: ${balance} ${chain.nativeCurrency.symbol}\nChain ID: ${chain.id}, Name: ${chain.name}`;
+            const balances = await walletProvider.getBridgePoolBalances();
+
+            let t = `${agentName}'s EVM Wallet Address: ${address}\nBalance: ${balance} ${chain.nativeCurrency.symbol}\nChain ID: ${chain.id}, Name: ${chain.name}`;
+            t += `\nLiquidity Pool's token balances:` + JSON.stringify(balances);
+            console.log("provider info:", t);
+            return t;
         } catch (error) {
             console.error("Error in EVM wallet provider:", error);
             return null;

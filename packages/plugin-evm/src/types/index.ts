@@ -221,3 +221,13 @@ export interface ProposeProposalParams extends Proposal {
     chain: SupportedChain;
     governor: Address;
 }
+
+export interface DepositParams {
+    token: Address;
+    chainId: number;
+    amount: bigint;
+   // receiver: Address;
+
+    chain: SupportedChain;
+    bridge: Address;
+}
